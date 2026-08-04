@@ -11,5 +11,5 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {"@vitejs/plugin-react": "latest", "react": "latest", "react-dom": "latest", "vite": "latest", "typescript": "latest"},
-  "devDependencies": {"@playwright/test": "latest", "@testing-library/react": "latest", "@testing-library/jest-dom": "latest", "@testing-library/user-event": "latest", "jsdom": "latest", "vitest": "latest"}
+  "devDependencies": {"@playwright/test": "latest", "@testing-library/react": "latest", "@testing-library/jest-dom": "latest", "@testing-library/user-event": "latest", "@types/react": "latest", "@types/react-dom": "latest", "jsdom": "latest", "vitest": "latest"}
 }

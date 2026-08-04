@@ -1,6 +1,7 @@
 import json, sqlite3, uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from .services.llm import AnalysisProvider, FixtureProvider, OpenAIProvider
 
@@ -9,6 +10,7 @@ class ActionRequest(BaseModel): actionType: str; confirmed: bool; parameters: di
 
 def create_app(database_path: Path | str = "./data/senior_ai.db", provider: AnalysisProvider | None = None) -> FastAPI:
     app = FastAPI(title="Senior AI API")
+    app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:4173"], allow_methods=["*"], allow_headers=["*"])
     db_path = Path(database_path); db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db_path) as db: db.execute("create table if not exists analyses (id text primary key, result text not null)")
     service = provider or (OpenAIProvider() if __import__("os").getenv("OPENAI_API_KEY") else FixtureProvider())
