@@ -2,7 +2,7 @@ import json, sqlite3, uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from .services.llm import AnalysisProvider, FixtureProvider
+from .services.llm import AnalysisProvider, FixtureProvider, OpenAIProvider
 
 class CreateAnalysis(BaseModel): text: str = Field(min_length=1, max_length=20000)
 class ActionRequest(BaseModel): actionType: str; confirmed: bool; parameters: dict = {}
@@ -11,7 +11,7 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
     app = FastAPI(title="Senior AI API")
     db_path = Path(database_path); db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db_path) as db: db.execute("create table if not exists analyses (id text primary key, result text not null)")
-    service = provider or FixtureProvider()
+    service = provider or (OpenAIProvider() if __import__("os").getenv("OPENAI_API_KEY") else FixtureProvider())
     def save(identifier, result):
         with sqlite3.connect(db_path) as db: db.execute("insert into analyses values (?,?)", (identifier, json.dumps(result)))
     @app.get("/health")

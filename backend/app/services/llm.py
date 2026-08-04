@@ -1,4 +1,7 @@
+import json
+import os
 from typing import Protocol
+from openai import AsyncOpenAI
 
 
 class AnalysisProvider(Protocol):
@@ -25,3 +28,16 @@ class FixtureProvider:
             ] if is_scam else [{"type":"take_no_action","priority":1,"label":"No action needed","reason":"There are no obvious warning signs.","enabled":True,"implementation":"informational"}]),
             "uncertaintyReasons": []
         }
+
+
+class OpenAIProvider:
+    """Keeps vendor-specific structured-output details outside application services."""
+    async def analyze(self, text: str) -> dict:
+        response = await AsyncOpenAI().responses.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            instructions="You explain everyday messages calmly for older adults. Return only the requested JSON. Never recommend replying to suspicious senders.",
+            input=[{"role":"user", "content":[{"type":"input_text", "text":text}]}],
+            text={"format":{"type":"json_schema", "name":"analysis", "strict":False,
+              "schema":{"type":"object", "additionalProperties":True}}},
+        )
+        return json.loads(response.output_text)
