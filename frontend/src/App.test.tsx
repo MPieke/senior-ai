@@ -42,7 +42,20 @@ test("reviews a selected document before upload", async () => {
   const file = new File(["sample"], "insurance-letter.pdf", {
     type: "application/pdf",
   });
-  render(<App api={{ analyze: async () => ({ analysisId: "a2", riskLevel: "green", title: "This is an insurance letter.", summary: "No action needed.", actionRequirement: "no_action", recommendedActions: [] }) }} />);
+  render(
+    <App
+      api={{
+        analyze: async () => ({
+          analysisId: "a2",
+          riskLevel: "green",
+          title: "This is an insurance letter.",
+          summary: "No action needed.",
+          actionRequirement: "no_action",
+          recommendedActions: [],
+        }),
+      }}
+    />,
+  );
   await user.click(screen.getByRole("button", { name: "Upload a document" }));
   await user.upload(screen.getByLabelText("Choose a document"), file);
   expect(screen.getByText("insurance-letter.pdf")).toBeInTheDocument();
