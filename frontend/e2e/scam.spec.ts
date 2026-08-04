@@ -1,5 +1,23 @@
 import { test, expect } from "@playwright/test";
+
+const scamResult = {
+  analysisId: "test-analysis",
+  riskLevel: "red",
+  title: "This looks like a scam text message.",
+  summary: "Someone may be pretending to be your bank.",
+  actionRequirement: "verify_before_acting",
+  recommendedActions: [],
+  originalText: "Your bank is locked. Click http://bad.example now.",
+};
+
 test("scam flow keeps original content collapsed", async ({ page }) => {
+  await page.route("**/v1/analyses", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({ json: scamResult });
+    } else {
+      await route.continue();
+    }
+  });
   await page.goto("/");
   await page.getByRole("button", { name: "Paste a message" }).click();
   await page

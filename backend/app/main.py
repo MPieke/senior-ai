@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sqlite3
 import uuid
@@ -11,6 +12,7 @@ from .schemas import AnalysisInput, AnalysisPayload
 from .services.llm import AnalysisProvider, FixtureProvider, OpenAIProvider
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+logger = logging.getLogger(__name__)
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 SUPPORTED_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"}
@@ -46,10 +48,15 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
     async def create(request: Request):
         input = await normalize(request)
         try: result = AnalysisPayload.model_validate(await service.analyze(input))
-        except Exception as exc: raise HTTPException(502, "I could not safely read this. Please try again.") from exc
+        except Exception as exc:
+            logger.exception("Provider response could not be validated")
+            raise HTTPException(502, "I could not safely read this. Please try again.") from exc
         actions = {a.type: a for a in result.recommendedActions}
         if result.riskLevel == "red": actions.pop("draft_reply", None)
         result.recommendedActions = sorted(actions.values(), key=lambda a: a.priority)[:3]
+        for action in result.recommendedActions:
+            # The MVP has no external integrations; never imply a live action.
+            if action.implementation == "live": action.implementation = "stub"
         output = result.model_dump() | {"schemaVersion":"1.0", "analysisId":str(uuid.uuid4()), "createdAt":"2026-08-04T00:00:00Z", "originalText":input.text}
         with sqlite3.connect(db_path) as db: db.execute("insert into analyses values (?,?)", (output["analysisId"], json.dumps(output)))
         return output

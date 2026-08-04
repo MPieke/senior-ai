@@ -12,6 +12,17 @@ class RecommendedAction(BaseModel):
     implementation: Literal["live", "stub", "informational"]
 
 
+class ExtractedFacts(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    sender: str | None
+    organization: str | None
+    amount: str | None
+    deadline: str | None
+    appointmentDate: str | None
+    phoneNumber: str | None
+    website: str | None
+
+
 class AnalysisPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal["complete", "partially_readable", "insufficient_information", "failed"]
@@ -26,7 +37,7 @@ class AnalysisPayload(BaseModel):
     confidence: Literal["high", "medium", "low"]
     riskCategories: list[str]
     riskReasons: list[str]
-    extractedFacts: dict[str, str | None]
+    extractedFacts: ExtractedFacts
     recommendedActions: list[RecommendedAction]
     uncertaintyReasons: list[str]
 
