@@ -52,6 +52,7 @@ export function App({ api = defaultApi }: { api?: Api }) {
     if (screen === "history") api.history?.().then(setHistory);
   }, [screen, api]);
   async function submit() {
+    setNotice("");
     setScreen("reading");
     try {
       setResult(await api.analyze(file || text));
@@ -202,7 +203,11 @@ export function App({ api = defaultApi }: { api?: Api }) {
             className="secondary"
             onClick={() => setShowOriginal(!showOriginal)}
           >
-            {showOriginal ? "Hide original message" : "Show original message"}
+            {showOriginal
+              ? "Hide original"
+              : result.originalFile
+                ? "Show original document"
+                : "Show original message"}
           </button>
           {showOriginal && <pre>{result.originalText}</pre>}
           {showOriginal &&
