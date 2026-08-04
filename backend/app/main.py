@@ -82,7 +82,7 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
         if not original_file: raise HTTPException(404, "There is no original document for this item.")
         path = upload_dir / original_file["path"]
         if not path.is_file(): raise HTTPException(404, "The original document is no longer available.")
-        return FileResponse(path, media_type=original_file["mediaType"], filename=original_file["filename"])
+        return FileResponse(path, media_type=original_file["mediaType"])
     @app.delete("/v1/analyses/{analysis_id}", status_code=204)
     async def delete_analysis(analysis_id: str):
         item = read_analysis(analysis_id); original_file = item.get("originalFile")
