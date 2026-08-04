@@ -66,8 +66,23 @@ test("reviews a selected document before upload", async () => {
 test("camera is marked coming soon and back clears a pending file", async () => {
   const user = userEvent.setup();
   const file = new File(["sample"], "letter.pdf", { type: "application/pdf" });
-  render(<App api={{ analyze: async () => ({ analysisId: "a3", riskLevel: "green", title: "Letter", summary: "", actionRequirement: "no_action", recommendedActions: [] }) }} />);
-  expect(screen.getByRole("button", { name: /Take a picture.*Coming soon/ })).toBeDisabled();
+  render(
+    <App
+      api={{
+        analyze: async () => ({
+          analysisId: "a3",
+          riskLevel: "green",
+          title: "Letter",
+          summary: "",
+          actionRequirement: "no_action",
+          recommendedActions: [],
+        }),
+      }}
+    />,
+  );
+  expect(
+    screen.getByRole("button", { name: /Take a picture.*Coming soon/ }),
+  ).toBeDisabled();
   await user.click(screen.getByRole("button", { name: "Upload a document" }));
   await user.upload(screen.getByLabelText("Choose a document"), file);
   await user.click(screen.getByRole("button", { name: "Go back" }));

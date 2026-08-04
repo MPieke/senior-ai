@@ -68,6 +68,43 @@ textarea:focus-visible {
 button:disabled {
   opacity: 0.55;
 }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.reading-mark {
+  width: 42px;
+  height: 42px;
+  border: 5px solid #e7d9c3;
+  border-top-color: #a2593f;
+  border-radius: 50%;
+  margin-bottom: 18px;
+  animation: gentle-spin 1.4s linear infinite;
+}
+.original-viewer {
+  width: 100%;
+  min-height: 480px;
+  border: 1px solid #d8cfba;
+  border-radius: 12px;
+  background: #fff;
+  margin-top: 12px;
+}
+@keyframes gentle-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reading-mark {
+    animation: none;
+    border-top-color: #e7d9c3;
+  }
+}
 small {
   float: right;
 }

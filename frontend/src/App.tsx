@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./styles.css";
 type Result = {
   analysisId: string;
@@ -8,6 +8,7 @@ type Result = {
   actionRequirement: string;
   recommendedActions: { type: string; label: string }[];
   originalText?: string;
+  originalFile?: { mediaType: string; filename: string } | null;
 };
 type Api = {
   analyze: (input: string | File) => Promise<Result>;
@@ -36,6 +37,7 @@ const defaultApi = {
   },
 };
 export function App({ api = defaultApi }: { api?: Api }) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const [screen, setScreen] = useState<
       "home" | "paste" | "upload" | "reading" | "result" | "history"
     >("home"),
@@ -77,7 +79,9 @@ export function App({ api = defaultApi }: { api?: Api }) {
           <h1>What’s this about?</h1>
           <p>Choose one to get started.</p>
           <button onClick={() => setScreen("paste")}>Paste a message</button>
-          <button onClick={() => setScreen("upload")}>Take a picture</button>
+          <button disabled>
+            Take a picture <small>Coming soon</small>
+          </button>
           <button onClick={() => setScreen("upload")}>Upload a document</button>
         </section>
       )}
@@ -102,9 +106,10 @@ export function App({ api = defaultApi }: { api?: Api }) {
           <h1>Upload a document</h1>
           {notice && <p role="alert">{notice}</p>}
           {!file ? (
-            <label>
-              Choose a document
+            <>
               <input
+                ref={fileInput}
+                className="visually-hidden"
                 aria-label="Choose a document"
                 type="file"
                 accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -113,7 +118,11 @@ export function App({ api = defaultApi }: { api?: Api }) {
                   setFile(event.target.files?.[0] || null);
                 }}
               />
-            </label>
+              <button onClick={() => fileInput.current?.click()}>
+                Choose a file
+              </button>
+              <p>PDF, JPEG, PNG, or WebP. Up to 10 MB.</p>
+            </>
           ) : (
             <div className="file-review">
               <strong>{file.name}</strong>
@@ -141,6 +150,7 @@ export function App({ api = defaultApi }: { api?: Api }) {
       )}
       {screen === "reading" && (
         <section aria-live="polite">
+          <div className="reading-mark" aria-hidden="true" />
           <h1>I’m reading this…</h1>
           <p>Give me a moment.</p>
         </section>
@@ -195,6 +205,21 @@ export function App({ api = defaultApi }: { api?: Api }) {
             {showOriginal ? "Hide original message" : "Show original message"}
           </button>
           {showOriginal && <pre>{result.originalText}</pre>}
+          {showOriginal &&
+            result.originalFile &&
+            (result.originalFile.mediaType.startsWith("image/") ? (
+              <img
+                className="original-viewer"
+                src={`http://localhost:8000/v1/analyses/${result.analysisId}/original`}
+                alt={`Original ${result.originalFile.filename}`}
+              />
+            ) : (
+              <iframe
+                className="original-viewer"
+                title={`Original ${result.originalFile.filename}`}
+                src={`http://localhost:8000/v1/analyses/${result.analysisId}/original`}
+              />
+            ))}
         </section>
       )}
       {screen === "history" && (
