@@ -42,7 +42,7 @@ class OpenAIProvider:
             if input.media_type.startswith("image/"):
                 content.append({"type":"input_image", "image_url":f"data:{input.media_type};base64,{data}", "detail":"high"})
             else:
-                content.append({"type":"input_file", "filename":input.filename or "document.pdf", "file_data":data})
+                content.append({"type":"input_file", "filename":input.filename or "document.pdf", "file_data":f"data:{input.media_type};base64,{data}"})
         response = await AsyncOpenAI().responses.create(
             model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
             instructions="You explain everyday messages calmly for older adults. Return only the requested JSON. Never recommend replying to suspicious senders.",
