@@ -3,11 +3,14 @@ import os
 import sqlite3
 import uuid
 from pathlib import Path
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from .schemas import AnalysisInput, AnalysisPayload
 from .services.llm import AnalysisProvider, FixtureProvider, OpenAIProvider
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 SUPPORTED_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"}

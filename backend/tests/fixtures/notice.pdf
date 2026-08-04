@@ -1,0 +1,3 @@
+%PDF-1.4
+% Minimal PDF-shaped evaluation fixture. The live provider receives its bytes;
+% unit tests exercise only input normalization.
