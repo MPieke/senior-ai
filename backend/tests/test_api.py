@@ -55,3 +55,17 @@ async def test_unsupported_upload_has_a_clear_recovery_message(tmp_path):
         response = await client.post("/v1/analyses", files={"file": ("script.exe", b"no", "application/octet-stream")})
     assert response.status_code == 415
     assert "photo, PDF" in response.json()["detail"]
+
+
+async def test_uploaded_original_can_be_viewed_and_is_deleted_with_analysis(tmp_path):
+    app = create_app(database_path=tmp_path / "test.db", provider=FixtureProvider())
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        created = await client.post("/v1/analyses", files={"file": ("notice.pdf", b"%PDF-1.4 sample", "application/pdf")})
+        analysis_id = created.json()["analysisId"]
+        original = await client.get(f"/v1/analyses/{analysis_id}/original")
+        assert original.status_code == 200
+        assert original.headers["content-type"] == "application/pdf"
+        assert original.content == b"%PDF-1.4 sample"
+        deleted = await client.delete(f"/v1/analyses/{analysis_id}")
+        assert deleted.status_code == 204
+        assert (await client.get(f"/v1/analyses/{analysis_id}/original")).status_code == 404
