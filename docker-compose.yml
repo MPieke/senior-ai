@@ -1,0 +1,20 @@
+services:
+  api:
+    build: ./backend
+    environment:
+      DATABASE_PATH: /data/senior_ai.db
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+    volumes:
+      - senior-ai-data:/data
+    ports:
+      - "8000:8000"
+  web:
+    build: ./frontend
+    ports:
+      - "4173:4173"
+    depends_on:
+      - api
+volumes:
+  senior-ai-data:
+

@@ -1,0 +1,16 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - run: uv sync --directory backend --extra dev
+      - run: uv run --directory backend pytest -v
+      - run: npm install --prefix frontend
+      - run: npm run test --prefix frontend
+      - run: npx --prefix frontend playwright install --with-deps chromium
+      - run: npm run test:e2e --prefix frontend
