@@ -3,6 +3,11 @@ from app.main import create_app
 from app.services.llm import FixtureProvider
 
 
+class InvalidProvider:
+    async def analyze(self, input):
+        return {"title": "Missing the required analysis fields"}
+
+
 async def test_scam_sms_is_stored_with_safe_actions(tmp_path):
     app = create_app(database_path=tmp_path / "test.db", provider=FixtureProvider())
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -23,3 +28,30 @@ async def test_action_requires_confirmation(tmp_path):
         analysis = (await client.post("/v1/analyses", json={"text": "bank link http://bad.example"})).json()
         response = await client.post(f"/v1/analyses/{analysis['analysisId']}/actions", json={"actionType": "save_item", "confirmed": False})
         assert response.status_code == 400
+
+
+async def test_invalid_provider_output_is_rejected(tmp_path):
+    app = create_app(database_path=tmp_path / "test.db", provider=InvalidProvider())
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/v1/analyses", json={"text": "A message"})
+    assert response.status_code == 502
+    assert "could not safely read" in response.json()["detail"].lower()
+
+
+async def test_pdf_upload_is_normalized_and_stored(tmp_path):
+    app = create_app(database_path=tmp_path / "test.db", provider=FixtureProvider())
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/v1/analyses",
+            files={"file": ("notice.pdf", b"%PDF-1.4 sample", "application/pdf")},
+        )
+    assert response.status_code == 201
+    assert response.json()["inputType"] == "message"
+
+
+async def test_unsupported_upload_has_a_clear_recovery_message(tmp_path):
+    app = create_app(database_path=tmp_path / "test.db", provider=FixtureProvider())
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/v1/analyses", files={"file": ("script.exe", b"no", "application/octet-stream")})
+    assert response.status_code == 415
+    assert "photo, PDF" in response.json()["detail"]
