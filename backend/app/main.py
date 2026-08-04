@@ -7,6 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from .schemas import AnalysisInput, AnalysisPayload
 from .services.llm import AnalysisProvider, FixtureProvider, OpenAIProvider
@@ -40,6 +41,7 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
     app = FastAPI(title="Senior AI API")
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:4173", "http://127.0.0.1:4173"], allow_methods=["*"], allow_headers=["*"])
     db_path = Path(database_path); db_path.parent.mkdir(parents=True, exist_ok=True)
+    upload_dir = db_path.parent / "uploads"; upload_dir.mkdir(exist_ok=True)
     with sqlite3.connect(db_path) as db: db.execute("create table if not exists analyses (id text primary key, result text not null)")
     service = provider or (OpenAIProvider() if os.getenv("OPENAI_API_KEY") else FixtureProvider())
     @app.get("/health")
@@ -57,12 +59,37 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
         for action in result.recommendedActions:
             # The MVP has no external integrations; never imply a live action.
             if action.implementation == "live": action.implementation = "stub"
-        output = result.model_dump() | {"schemaVersion":"1.0", "analysisId":str(uuid.uuid4()), "createdAt":"2026-08-04T00:00:00Z", "originalText":input.text}
+        analysis_id = str(uuid.uuid4())
+        original_file = None
+        if input.content and input.filename and input.media_type:
+            stored_name = f"{analysis_id}{Path(input.filename).suffix.lower()}"
+            stored_path = upload_dir / stored_name
+            stored_path.write_bytes(input.content)
+            original_file = {"path": stored_name, "mediaType": input.media_type, "filename": input.filename}
+        output = result.model_dump() | {"schemaVersion":"1.0", "analysisId":analysis_id, "createdAt":"2026-08-04T00:00:00Z", "originalText":input.text, "originalFile":original_file}
         with sqlite3.connect(db_path) as db: db.execute("insert into analyses values (?,?)", (output["analysisId"], json.dumps(output)))
         return output
     @app.get("/v1/analyses")
     async def history():
         with sqlite3.connect(db_path) as db: return [json.loads(row[0]) for row in db.execute("select result from analyses order by rowid desc")]
+    def read_analysis(analysis_id: str):
+        with sqlite3.connect(db_path) as db: row = db.execute("select result from analyses where id = ?", (analysis_id,)).fetchone()
+        if not row: raise HTTPException(404, "This item is no longer available.")
+        return json.loads(row[0])
+    @app.get("/v1/analyses/{analysis_id}/original")
+    async def original(analysis_id: str):
+        item = read_analysis(analysis_id); original_file = item.get("originalFile")
+        if not original_file: raise HTTPException(404, "There is no original document for this item.")
+        path = upload_dir / original_file["path"]
+        if not path.is_file(): raise HTTPException(404, "The original document is no longer available.")
+        return FileResponse(path, media_type=original_file["mediaType"], filename=original_file["filename"])
+    @app.delete("/v1/analyses/{analysis_id}", status_code=204)
+    async def delete_analysis(analysis_id: str):
+        item = read_analysis(analysis_id); original_file = item.get("originalFile")
+        if original_file:
+            path = upload_dir / original_file["path"]
+            if path.is_file(): path.unlink()
+        with sqlite3.connect(db_path) as db: db.execute("delete from analyses where id = ?", (analysis_id,))
     @app.post("/v1/analyses/{analysis_id}/actions")
     async def action(analysis_id: str, request: ActionRequest):
         if not request.confirmed: raise HTTPException(400, "Please confirm this action first.")
