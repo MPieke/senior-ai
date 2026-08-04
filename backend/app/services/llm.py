@@ -1,15 +1,18 @@
 import json
 import os
+import base64
 from typing import Protocol
 from openai import AsyncOpenAI
+from ..schemas import AnalysisInput, AnalysisPayload
 
 
 class AnalysisProvider(Protocol):
-    async def analyze(self, text: str) -> dict: ...
+    async def analyze(self, input: AnalysisInput) -> dict: ...
 
 
 class FixtureProvider:
-    async def analyze(self, text: str) -> dict:
+    async def analyze(self, input: AnalysisInput) -> dict:
+        text = input.text or input.filename or "document"
         is_scam = any(word in text.lower() for word in ("http", "bank", "locked", "urgent"))
         return {
             "status": "complete", "inputType": "message", "specificType": "scam_text" if is_scam else None,
@@ -32,12 +35,19 @@ class FixtureProvider:
 
 class OpenAIProvider:
     """Keeps vendor-specific structured-output details outside application services."""
-    async def analyze(self, text: str) -> dict:
+    async def analyze(self, input: AnalysisInput) -> dict:
+        content = [{"type":"input_text", "text": input.text or "Please read this document carefully."}]
+        if input.content and input.media_type:
+            data = base64.b64encode(input.content).decode()
+            if input.media_type.startswith("image/"):
+                content.append({"type":"input_image", "image_url":f"data:{input.media_type};base64,{data}", "detail":"high"})
+            else:
+                content.append({"type":"input_file", "filename":input.filename or "document.pdf", "file_data":data})
         response = await AsyncOpenAI().responses.create(
             model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
             instructions="You explain everyday messages calmly for older adults. Return only the requested JSON. Never recommend replying to suspicious senders.",
-            input=[{"role":"user", "content":[{"type":"input_text", "text":text}]}],
-            text={"format":{"type":"json_schema", "name":"analysis", "strict":False,
-              "schema":{"type":"object", "additionalProperties":True}}},
+            input=[{"role":"user", "content":content}],
+            text={"format":{"type":"json_schema", "name":"analysis", "strict":True,
+              "schema":AnalysisPayload.model_json_schema()}},
         )
         return json.loads(response.output_text)
