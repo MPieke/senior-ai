@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import "./styles.css";
 type Result = {
   analysisId: string;
@@ -37,7 +37,6 @@ const defaultApi = {
   },
 };
 export function App({ api = defaultApi }: { api?: Api }) {
-  const fileInput = useRef<HTMLInputElement>(null);
   const [screen, setScreen] = useState<
       "home" | "paste" | "upload" | "reading" | "result" | "history"
     >("home"),
@@ -108,20 +107,18 @@ export function App({ api = defaultApi }: { api?: Api }) {
           {notice && <p role="alert">{notice}</p>}
           {!file ? (
             <>
-              <input
-                ref={fileInput}
-                className="visually-hidden"
-                aria-label="Choose a document"
-                type="file"
-                accept="application/pdf,image/jpeg,image/png,image/webp"
-                onChange={(event) => {
-                  setNotice("");
-                  setFile(event.target.files?.[0] || null);
-                }}
-              />
-              <button onClick={() => fileInput.current?.click()}>
-                Choose a file
-              </button>
+              <label className="file-picker">
+                <span>Choose a file</span>
+                <input
+                  aria-label="Choose a document"
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    setNotice("");
+                    setFile(event.target.files?.[0] || null);
+                  }}
+                />
+              </label>
               <p>PDF, JPEG, PNG, or WebP. Up to 10 MB.</p>
             </>
           ) : (
