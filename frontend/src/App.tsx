@@ -7,6 +7,7 @@ type Result = {
   summary: string;
   actionRequirement: string;
   recommendedActions: { type: string; label: string }[];
+  safetyGuidance?: string[];
   originalText?: string;
   originalFile?: { mediaType: string; filename: string } | null;
 };
@@ -166,6 +167,16 @@ export function App({ api = defaultApi }: { api?: Api }) {
               ? "Don’t reply or click a link. Verify independently."
               : "No action needed."}
           </p>
+          {result.safetyGuidance?.length ? (
+            <div className="safety-guidance">
+              <h2>What to be careful about</h2>
+              <ul>
+                {result.safetyGuidance.map((guidance) => (
+                  <li key={guidance}>{guidance}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div>
             {result.recommendedActions.map((a) => (
               <button key={a.type} onClick={() => setPending(a.label)}>

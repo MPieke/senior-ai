@@ -54,6 +54,12 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
             logger.exception("Provider response could not be validated")
             raise HTTPException(502, "I could not safely read this. Please try again.") from exc
         actions = {a.type: a for a in result.recommendedActions}
+        safety_guidance = [
+            action.label
+            for action in actions.values()
+            if action.type == "take_no_action"
+        ]
+        actions.pop("take_no_action", None)
         if result.riskLevel == "red": actions.pop("draft_reply", None)
         result.recommendedActions = sorted(actions.values(), key=lambda a: a.priority)[:3]
         for action in result.recommendedActions:
@@ -66,7 +72,7 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
             stored_path = upload_dir / stored_name
             stored_path.write_bytes(input.content)
             original_file = {"path": stored_name, "mediaType": input.media_type, "filename": input.filename}
-        output = result.model_dump() | {"schemaVersion":"1.0", "analysisId":analysis_id, "createdAt":"2026-08-04T00:00:00Z", "originalText":input.text, "originalFile":original_file}
+        output = result.model_dump() | {"schemaVersion":"1.0", "analysisId":analysis_id, "createdAt":"2026-08-04T00:00:00Z", "originalText":input.text, "originalFile":original_file, "safetyGuidance":safety_guidance}
         with sqlite3.connect(db_path) as db: db.execute("insert into analyses values (?,?)", (output["analysisId"], json.dumps(output)))
         return output
     @app.get("/v1/analyses")

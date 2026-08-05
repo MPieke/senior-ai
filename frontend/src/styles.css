@@ -96,6 +96,20 @@ button:disabled {
   outline: 4px solid #a2593f;
   outline-offset: 3px;
 }
+.safety-guidance {
+  margin: 20px 0;
+  padding: 16px 18px;
+  border-left: 6px solid #a2593f;
+  border-radius: 12px;
+  background: #fff7ed;
+}
+.safety-guidance h2,
+.safety-guidance ul {
+  margin: 0;
+}
+.safety-guidance ul {
+  padding-left: 24px;
+}
 .reading-mark {
   width: 42px;
   height: 42px;
