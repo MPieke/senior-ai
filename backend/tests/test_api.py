@@ -8,6 +8,30 @@ class InvalidProvider:
         return {"title": "Missing the required analysis fields"}
 
 
+class GuidanceProvider:
+    async def analyze(self, input):
+        result = await FixtureProvider().analyze(input)
+        result["recommendedActions"] = [
+            {
+                "type": "verify_with_organization",
+                "priority": 1,
+                "label": "Verify with a trusted family member",
+                "reason": "Ask someone you trust for help.",
+                "enabled": True,
+                "implementation": "stub",
+            },
+            {
+                "type": "take_no_action",
+                "priority": 2,
+                "label": "Do not send money or gift card codes",
+                "reason": "Do not respond to the sender.",
+                "enabled": True,
+                "implementation": "informational",
+            },
+        ]
+        return result
+
+
 async def test_scam_sms_is_stored_with_safe_actions(tmp_path):
     app = create_app(database_path=tmp_path / "test.db", provider=FixtureProvider())
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -28,6 +52,18 @@ async def test_action_requires_confirmation(tmp_path):
         analysis = (await client.post("/v1/analyses", json={"text": "bank link http://bad.example"})).json()
         response = await client.post(f"/v1/analyses/{analysis['analysisId']}/actions", json={"actionType": "save_item", "confirmed": False})
         assert response.status_code == 400
+
+
+async def test_safety_guidance_is_not_a_clickable_action(tmp_path):
+    app = create_app(database_path=tmp_path / "test.db", provider=GuidanceProvider())
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/v1/analyses", json={"text": "A worrying message"})
+    assert response.status_code == 201
+    result = response.json()
+    assert result["safetyGuidance"] == ["Do not send money or gift card codes"]
+    assert [action["type"] for action in result["recommendedActions"]] == [
+        "verify_with_organization"
+    ]
 
 
 async def test_invalid_provider_output_is_rejected(tmp_path):

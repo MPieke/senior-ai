@@ -63,6 +63,44 @@ test("reviews a selected document before upload", async () => {
   expect(screen.queryByText("insurance-letter.pdf")).not.toBeInTheDocument();
 });
 
+test("shows safety guidance as text and keeps only operations clickable", async () => {
+  const user = userEvent.setup();
+  render(
+    <App
+      api={{
+        analyze: async () => ({
+          analysisId: "a-guidance",
+          riskLevel: "red",
+          title: "This may be a scam.",
+          summary: "Someone is asking for money.",
+          actionRequirement: "verify_before_acting",
+          safetyGuidance: ["Do not send money or gift card codes"],
+          recommendedActions: [
+            {
+              type: "verify_with_organization",
+              label: "Verify with a trusted family member",
+            },
+          ],
+        }),
+      }}
+    />,
+  );
+  await user.click(screen.getByRole("button", { name: "Paste a message" }));
+  await user.type(screen.getByLabelText("Message"), "Please send money.");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+
+  expect(
+    await screen.findByText("Do not send money or gift card codes"),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Do not send money or gift card codes" }),
+  ).not.toBeInTheDocument();
+  await user.click(
+    screen.getByRole("button", { name: "Verify with a trusted family member" }),
+  );
+  expect(screen.getByRole("dialog", { name: "Confirm action" })).toBeInTheDocument();
+});
+
 test("camera is marked coming soon and back clears a pending file", async () => {
   const user = userEvent.setup();
   const file = new File(["sample"], "letter.pdf", { type: "application/pdf" });
