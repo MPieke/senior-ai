@@ -11,9 +11,10 @@ OpenAI key only when you want live analysis.
 3. Run `make up`.
 4. Open [http://localhost:4173](http://localhost:4173).
 
-Use `make status` to see service health, `make logs` to follow application
-logs, and `make down` to stop the application. Analyses and retained uploaded
-documents live in the `senior-ai-data` Docker volume and survive `make down`.
+Use `make status` to see service health, `make logs` to follow both services,
+`make logs-api` or `make logs-web` to focus on one service, and `make down` to
+stop the application. Analyses and retained uploaded documents live in the
+`senior-ai-data` Docker volume and survive `make down`.
 
 ## Commands
 

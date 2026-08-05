@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import sqlite3
 import uuid
@@ -8,13 +7,12 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from loguru import logger
 from pydantic import BaseModel
 from .schemas import AnalysisInput, AnalysisPayload
 from .services.llm import AnalysisProvider, FixtureProvider, OpenAIProvider
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-logger = logging.getLogger(__name__)
-
 MAX_FILE_BYTES = 10 * 1024 * 1024
 SUPPORTED_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"}
 
@@ -49,9 +47,15 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
     @app.post("/v1/analyses", status_code=201)
     async def create(request: Request):
         input = await normalize(request)
+        logger.info(
+            "analysis.received input_kind={} media_type={} byte_count={}",
+            "file" if input.content else "text",
+            input.media_type or "text/plain",
+            len(input.content or (input.text or "").encode("utf-8")),
+        )
         try: result = AnalysisPayload.model_validate(await service.analyze(input))
         except Exception as exc:
-            logger.exception("Provider response could not be validated")
+            logger.exception("analysis.failed reason=provider_response_invalid")
             raise HTTPException(502, "I could not safely read this. Please try again.") from exc
         actions = {a.type: a for a in result.recommendedActions}
         safety_guidance = [
@@ -74,6 +78,12 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
             original_file = {"path": stored_name, "mediaType": input.media_type, "filename": input.filename}
         output = result.model_dump() | {"schemaVersion":"1.0", "analysisId":analysis_id, "createdAt":"2026-08-04T00:00:00Z", "originalText":input.text, "originalFile":original_file, "safetyGuidance":safety_guidance}
         with sqlite3.connect(db_path) as db: db.execute("insert into analyses values (?,?)", (output["analysisId"], json.dumps(output)))
+        logger.info(
+            "analysis.completed analysis_id={} risk_level={} action_types={}",
+            analysis_id,
+            result.riskLevel,
+            ",".join(action.type for action in result.recommendedActions),
+        )
         return output
     @app.get("/v1/analyses")
     async def history():
@@ -98,6 +108,12 @@ def create_app(database_path: Path | str = "./data/senior_ai.db", provider: Anal
         with sqlite3.connect(db_path) as db: db.execute("delete from analyses where id = ?", (analysis_id,))
     @app.post("/v1/analyses/{analysis_id}/actions")
     async def action(analysis_id: str, request: ActionRequest):
+        logger.info(
+            "action.attempted analysis_id={} action_type={} confirmed={}",
+            analysis_id,
+            request.actionType,
+            request.confirmed,
+        )
         if not request.confirmed: raise HTTPException(400, "Please confirm this action first.")
         return {"actionAttemptId":str(uuid.uuid4()), "status":"stubbed", "message":"This was saved as a practice action. Nothing was sent outside this app."}
     return app

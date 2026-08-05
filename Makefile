@@ -2,7 +2,7 @@
 
 COMPOSE := docker compose
 
-.PHONY: help up down logs status smoke test test-backend test-frontend test-e2e
+.PHONY: help up down logs logs-api logs-web status smoke test test-backend test-frontend test-e2e
 
 help: ## Show available commands.
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "%-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -15,6 +15,12 @@ down: ## Stop application containers (retained analyses stay in the Docker volum
 
 logs: ## Follow application logs.
 	$(COMPOSE) logs --follow
+
+logs-api: ## Follow FastAPI logs only.
+	$(COMPOSE) logs --follow api
+
+logs-web: ## Follow frontend logs only.
+	$(COMPOSE) logs --follow web
 
 status: ## Show container health and published ports.
 	$(COMPOSE) ps
