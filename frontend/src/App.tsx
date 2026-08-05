@@ -107,18 +107,18 @@ export function App({ api = defaultApi }: { api?: Api }) {
           {notice && <p role="alert">{notice}</p>}
           {!file ? (
             <>
-              <label className="file-picker">
-                <span>Choose a file</span>
-                <input
-                  aria-label="Choose a document"
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/webp"
-                  onChange={(event) => {
-                    setNotice("");
-                    setFile(event.target.files?.[0] || null);
-                  }}
-                />
-              </label>
+              <label htmlFor="document-upload">Choose a file</label>
+              <input
+                id="document-upload"
+                className="file-picker"
+                aria-label="Choose a document"
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                onChange={(event) => {
+                  setNotice("");
+                  setFile(event.target.files?.[0] || null);
+                }}
+              />
               <p>PDF, JPEG, PNG, or WebP. Up to 10 MB.</p>
             </>
           ) : (
