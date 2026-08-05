@@ -1,0 +1,8 @@
+URGENT SECURITY NOTICE
+
+Your bank account has been locked because of suspicious activity.
+
+To restore access, click https://bank-security-alert.example/verify and enter
+your card number, account password, and security code within 24 hours.
+
+If you do not respond, your account will be permanently closed.
