@@ -1,4 +1,5 @@
 from httpx import ASGITransport, AsyncClient
+import app.main as main
 from app.main import create_app
 from app.services.llm import FixtureProvider
 
@@ -52,6 +53,29 @@ async def test_action_requires_confirmation(tmp_path):
         analysis = (await client.post("/v1/analyses", json={"text": "bank link http://bad.example"})).json()
         response = await client.post(f"/v1/analyses/{analysis['analysisId']}/actions", json={"actionType": "save_item", "confirmed": False})
         assert response.status_code == 400
+
+
+async def test_analysis_and_action_events_exclude_message_content(tmp_path, monkeypatch):
+    events = []
+
+    class EventLogger:
+        def info(self, message, *values):
+            events.append(message.format(*values))
+
+    monkeypatch.setattr(main, "logger", EventLogger())
+    app = main.create_app(database_path=tmp_path / "test.db", provider=FixtureProvider())
+    secret_message = "private message content must never appear in logs"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        analysis = (await client.post("/v1/analyses", json={"text": secret_message})).json()
+        await client.post(
+            f"/v1/analyses/{analysis['analysisId']}/actions",
+            json={"actionType": "save_item", "confirmed": True},
+        )
+
+    assert any(event.startswith("analysis.received") for event in events)
+    assert any(event.startswith("analysis.completed") for event in events)
+    assert any(event.startswith("action.attempted") for event in events)
+    assert secret_message not in "\n".join(events)
 
 
 async def test_safety_guidance_is_not_a_clickable_action(tmp_path):
